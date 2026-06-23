@@ -52,6 +52,7 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.androidx.material3)
+    implementation(libs.androidx.compose.ui.text)
     testImplementation(libs.junit)
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.10.0")
     androidTestImplementation(libs.androidx.junit)

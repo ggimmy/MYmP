@@ -2,6 +2,7 @@ package com.example.mymp
 
 import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,32 +13,30 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -48,8 +47,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -70,31 +71,47 @@ fun mympMainScreen(
 
     Column(
         modifier = Modifier
-            .padding(2.dp)
-            .safeContentPadding()
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .safeContentPadding()
+            .padding(horizontal = 8.dp)
     ) {
 
         // --- Riga 1: Ricerca + Sort ---
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 4.dp, vertical = 2.dp),
+                .padding(vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             OutlinedTextField(
                 value = uiState.searchQuery,
                 onValueChange = { viewModel.onSearchQueryChange(it) },
-                placeholder = { Text("Cerca canzone o artista...") },
+                placeholder = {
+                    Text(
+                        "Cerca canzone o artista...",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 14.sp
+                    )
+                },
                 modifier = Modifier.weight(1f),
                 singleLine = true,
+                shape = RoundedCornerShape(24.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    unfocusedBorderColor = MaterialTheme.colorScheme.surfaceVariant,
+                    focusedBorderColor = MaterialTheme.colorScheme.primary
+                ),
                 leadingIcon = {
-                    Icon(Icons.Default.Search, contentDescription = null)
+                    Icon(
+                        Icons.Default.Search,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 },
                 trailingIcon = {
                     if (uiState.searchQuery.isNotBlank()) {
                         IconButton(onClick = { viewModel.onSearchQueryChange("") }) {
-                            Icon(Icons.Default.Close, contentDescription = "Cancella ricerca")
+                            Icon(Icons.Default.Close, contentDescription = "Cancella")
                         }
                     }
                 }
@@ -102,7 +119,11 @@ fun mympMainScreen(
 
             Box {
                 IconButton(onClick = { sortDropdownExpanded = true }) {
-                    Icon(Icons.Default.Sort, contentDescription = "Ordinamento")
+                    Icon(
+                        Icons.Default.Sort,
+                        contentDescription = "Ordinamento",
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
                 }
                 DropdownMenu(
                     expanded = sortDropdownExpanded,
@@ -122,7 +143,11 @@ fun mympMainScreen(
                             },
                             trailingIcon = {
                                 if (uiState.sortOrder == order) {
-                                    Icon(Icons.Default.Check, contentDescription = null)
+                                    Icon(
+                                        Icons.Default.Check,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
                                 }
                             }
                         )
@@ -131,17 +156,32 @@ fun mympMainScreen(
             }
         }
 
-        // --- Riga 2: Server + Playlist + Settings ---
+        // --- Riga 2: Server + Playlist + Settings + Connessione ---
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Dropdown Server
             Box {
-                androidx.compose.material3.Button(
-                    onClick = { serverDropdownExpanded = true }
-                ) {
-                    Text(uiState.activeServer?.serverName ?: "Server")
-                    Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                TextButton(onClick = { serverDropdownExpanded = true }) {
+                    Icon(
+                        Icons.Default.Check,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(end = 4.dp)
+                    )
+                    Text(
+                        uiState.activeServer?.serverName ?: "Server",
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontSize = 13.sp
+                    )
+                    Icon(
+                        Icons.Default.ArrowDropDown,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
                 DropdownMenu(
                     expanded = serverDropdownExpanded,
@@ -153,18 +193,34 @@ fun mympMainScreen(
                             onClick = {
                                 viewModel.selectServer(server)
                                 serverDropdownExpanded = false
+                            },
+                            trailingIcon = {
+                                if (uiState.activeServer?.id == server.id) {
+                                    Icon(
+                                        Icons.Default.Check,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
                             }
                         )
                     }
                 }
             }
 
+            // Dropdown Playlist
             Box {
-                androidx.compose.material3.Button(
-                    onClick = { playlistDropdownExpanded = true }
-                ) {
-                    Text(uiState.activePlaylist?.playlistName ?: "Playlist")
-                    Icon(Icons.Default.ArrowDropDown, contentDescription = null)
+                TextButton(onClick = { playlistDropdownExpanded = true }) {
+                    Text(
+                        uiState.activePlaylist?.playlistName ?: "All Songs",
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontSize = 13.sp
+                    )
+                    Icon(
+                        Icons.Default.ArrowDropDown,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
                 DropdownMenu(
                     expanded = playlistDropdownExpanded,
@@ -175,6 +231,15 @@ fun mympMainScreen(
                         onClick = {
                             viewModel.selectPlaylist(null)
                             playlistDropdownExpanded = false
+                        },
+                        trailingIcon = {
+                            if (uiState.activePlaylist == null) {
+                                Icon(
+                                    Icons.Default.Check,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
                         }
                     )
                     HorizontalDivider()
@@ -184,42 +249,82 @@ fun mympMainScreen(
                             onClick = {
                                 viewModel.selectPlaylist(playlist)
                                 playlistDropdownExpanded = false
+                            },
+                            trailingIcon = {
+                                if (uiState.activePlaylist?.playlistId == playlist.playlistId) {
+                                    Icon(
+                                        Icons.Default.Check,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
                             }
                         )
                     }
                 }
             }
 
-            IconButton(onClick = onSettingsClick) {
-                Icon(Icons.Default.Settings, contentDescription = "Impostazioni")
-            }
+            // Spacer per spingere Settings a destra
+            Box(modifier = Modifier.weight(1f))
 
-            Icon(
-                imageVector = if (uiState.isConnected) Icons.Default.Check else Icons.Default.Close,
-                contentDescription = "Connection Status",
-                modifier = Modifier.padding(2.dp)
-            )
+            IconButton(onClick = onSettingsClick) {
+                Icon(
+                    Icons.Default.Settings,
+                    contentDescription = "Impostazioni",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
 
-        Text("Sync: $state Songs: ${displayedSongs.size}")
+        HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
 
         // --- Lista brani ---
         LazyColumn(modifier = Modifier.weight(1f)) {
             items(displayedSongs.size) { index ->
                 val song = displayedSongs[index]
-                ListItem(
-                    headlineContent = { Text(song.title) },
-                    supportingContent = { Text(song.artist) },
+                val isPlaying = uiState.currentSong == song
+
+                Row(
                     modifier = Modifier
-                        .padding(2.dp)
+                        .fillMaxWidth()
+                        .background(
+                            if (isPlaying) MaterialTheme.colorScheme.surfaceVariant
+                            else MaterialTheme.colorScheme.background
+                        )
                         .combinedClickable(
                             onClick = { viewModel.playSong(context, song) },
                             onLongClick = { songForPlaylist = song }
                         )
+                        .padding(horizontal = 8.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = song.title,
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 15.sp,
+                            color = if (isPlaying)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1
+                        )
+                        Text(
+                            text = song.artist,
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1
+                        )
+                    }
+                }
+
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                 )
-                HorizontalDivider()
             }
         }
+
+        HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
 
         MiniPlayerBar(
             currentSong = uiState.currentSong,
