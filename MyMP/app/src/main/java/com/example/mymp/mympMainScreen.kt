@@ -1,7 +1,7 @@
 package com.example.mymp
 
+import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,18 +17,25 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Sort
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.Stop
-import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -56,12 +63,10 @@ fun mympMainScreen(
 
     var serverDropdownExpanded by remember { mutableStateOf(false) }
     var playlistDropdownExpanded by remember { mutableStateOf(false) }
+    var sortDropdownExpanded by remember { mutableStateOf(false) }
     var songForPlaylist by remember { mutableStateOf<Song?>(null) }
 
-    val displayedSongs = if (uiState.activePlaylist != null)
-        uiState.currentPlaylistSongs
-    else
-        uiState.songs
+    val displayedSongs = viewModel.displayedSongs
 
     Column(
         modifier = Modifier
@@ -70,15 +75,71 @@ fun mympMainScreen(
             .fillMaxSize()
     ) {
 
-        // --- Barra superiore ---
+        // --- Riga 1: Ricerca + Sort ---
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp, vertical = 2.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            OutlinedTextField(
+                value = uiState.searchQuery,
+                onValueChange = { viewModel.onSearchQueryChange(it) },
+                placeholder = { Text("Cerca canzone o artista...") },
+                modifier = Modifier.weight(1f),
+                singleLine = true,
+                leadingIcon = {
+                    Icon(Icons.Default.Search, contentDescription = null)
+                },
+                trailingIcon = {
+                    if (uiState.searchQuery.isNotBlank()) {
+                        IconButton(onClick = { viewModel.onSearchQueryChange("") }) {
+                            Icon(Icons.Default.Close, contentDescription = "Cancella ricerca")
+                        }
+                    }
+                }
+            )
+
+            Box {
+                IconButton(onClick = { sortDropdownExpanded = true }) {
+                    Icon(Icons.Default.Sort, contentDescription = "Ordinamento")
+                }
+                DropdownMenu(
+                    expanded = sortDropdownExpanded,
+                    onDismissRequest = { sortDropdownExpanded = false }
+                ) {
+                    SortOrder.entries.forEach { order ->
+                        DropdownMenuItem(
+                            text = { Text(order.label) },
+                            onClick = {
+                                viewModel.onSortOrderChange(order)
+                                sortDropdownExpanded = false
+                                Toast.makeText(
+                                    context,
+                                    "Ordinamento: ${order.label}",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            },
+                            trailingIcon = {
+                                if (uiState.sortOrder == order) {
+                                    Icon(Icons.Default.Check, contentDescription = null)
+                                }
+                            }
+                        )
+                    }
+                }
+            }
+        }
+
+        // --- Riga 2: Server + Playlist + Settings ---
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-
-            // Dropdown Server
             Box {
-                Button(onClick = { serverDropdownExpanded = true }) {
+                androidx.compose.material3.Button(
+                    onClick = { serverDropdownExpanded = true }
+                ) {
                     Text(uiState.activeServer?.serverName ?: "Server")
                     Icon(Icons.Default.ArrowDropDown, contentDescription = null)
                 }
@@ -98,9 +159,10 @@ fun mympMainScreen(
                 }
             }
 
-            // Dropdown Playlist
             Box {
-                Button(onClick = { playlistDropdownExpanded = true }) {
+                androidx.compose.material3.Button(
+                    onClick = { playlistDropdownExpanded = true }
+                ) {
                     Text(uiState.activePlaylist?.playlistName ?: "Playlist")
                     Icon(Icons.Default.ArrowDropDown, contentDescription = null)
                 }
@@ -128,7 +190,6 @@ fun mympMainScreen(
                 }
             }
 
-            // Settings + stato connessione
             IconButton(onClick = onSettingsClick) {
                 Icon(Icons.Default.Settings, contentDescription = "Impostazioni")
             }
@@ -160,7 +221,6 @@ fun mympMainScreen(
             }
         }
 
-        // --- Mini player ---
         MiniPlayerBar(
             currentSong = uiState.currentSong,
             isPlaying = uiState.isPlaying,
@@ -170,7 +230,6 @@ fun mympMainScreen(
         )
     }
 
-    // --- Dialog aggiungi a playlist ---
     songForPlaylist?.let { song ->
         AddToPlaylistDialog(
             song = song,

@@ -1,7 +1,8 @@
 package com.example.mymp
 
-enum class SortOrder {
-
-    TITLE_ASC, TITLE_DES, ARTIST_ASC, ARTIST_DES
-
+enum class SortOrder(val label: String) {
+    TITLE_ASC("Titolo A→Z"),
+    TITLE_DES("Titolo Z→A"),
+    ARTIST_ASC("Artista A→Z"),
+    ARTIST_DES("Artista Z→A")
 }

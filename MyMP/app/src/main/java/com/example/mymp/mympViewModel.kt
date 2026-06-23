@@ -272,7 +272,35 @@ class mympViewModel (
     }
 
 
+    val displayedSongs: List<Song>
+        get() {
+            val base = if (uiState.activePlaylist != null)
+                uiState.currentPlaylistSongs
+            else
+                uiState.songs
 
+            val filtered = if (uiState.searchQuery.isBlank()) base
+            else base.filter {
+                it.title.contains(uiState.searchQuery, ignoreCase = true) ||
+                        it.artist.contains(uiState.searchQuery, ignoreCase = true)
+            }
+
+            return when (uiState.sortOrder) {
+                SortOrder.TITLE_ASC -> filtered.sortedBy { it.title }
+                SortOrder.TITLE_DES -> filtered.sortedByDescending { it.title }
+                SortOrder.ARTIST_ASC -> filtered.sortedBy { it.artist }
+                SortOrder.ARTIST_DES -> filtered.sortedByDescending { it.artist }
+            }
+        }
+
+
+    fun onSearchQueryChange(query: String) {
+        uiState = uiState.copy(searchQuery = query)
+    }
+
+    fun onSortOrderChange(order: SortOrder) {
+        uiState = uiState.copy(sortOrder = order)
+    }
 
     class Factory(
         private val repository: mympRepository,
