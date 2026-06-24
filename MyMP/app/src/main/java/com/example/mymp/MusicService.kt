@@ -29,6 +29,8 @@ class MusicService (
     private var playlist: List<Song> = emptyList()
     private var currentIndex: Int = 0
 
+    private val app get() = application as MympApplication
+
     override fun onCreate() {
         super.onCreate()
         Log.d("MusicService", "Service onCreate")
@@ -50,6 +52,9 @@ class MusicService (
                     playlist = Json.decodeFromString(songJson)
                 }
 
+                currentIndex = playlist.indexOfFirst { it.filePath == filePath }
+                    .takeIf { it >= 0 } ?: 0 //aggiorna index per skip
+
 
                 startForegroundWithNotification()
 
@@ -64,6 +69,7 @@ class MusicService (
                 } else {
                     mediaPlayer?.start()
                 }
+                updateSharedState()
                 updateNotification()
             }
 
@@ -73,6 +79,8 @@ class MusicService (
 
             ACTION_STOP -> {
                 mediaPlayer?.stop()
+                app.currentSongState.value = null
+                app.isPlayingState.value = false
                 stopForeground(STOP_FOREGROUND_REMOVE)
                 stopSelf()
             }
@@ -107,7 +115,13 @@ class MusicService (
         val next = playlist[currentIndex]
         currentTitle = next.title
         currentArtist = next.artist
+        updateSharedState()
         playSong(next.filePath)
+    }
+
+    private fun updateSharedState() {
+        app.currentSongState.value = playlist.getOrNull(currentIndex)
+        app.isPlayingState.value = mediaPlayer?.isPlaying == true
     }
 
     private fun startForegroundWithNotification() {

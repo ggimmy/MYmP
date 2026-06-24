@@ -34,10 +34,12 @@ class MainActivity : ComponentActivity() {
 
         val repository = mympRepository(db.mympDao(), db.ServerDao(), db.playlistDao())
 
+        val app = application as MympApplication
+
         setContent {
             MyMPTheme {
                 val vm: mympViewModel = viewModel(
-                    factory = mympViewModel.Factory(repository, WorkManager.getInstance(applicationContext))
+                    factory = mympViewModel.Factory(repository, WorkManager.getInstance(applicationContext), app.currentSongState, app.isPlayingState)
                 )
                 MyMPNavHost(vm)
             }

@@ -16,6 +16,7 @@ import androidx.work.WorkManager
 import androidx.work.workDataOf
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -27,7 +28,9 @@ import retrofit2.Retrofit
 
 class mympViewModel (
     private val repository: mympRepository,
-    private val workManager: WorkManager
+    private val workManager: WorkManager,
+    private val currentSongState: MutableStateFlow<Song?>,
+    private val isPlayingState: MutableStateFlow<Boolean>
 ) : ViewModel() {
 
     var uiState by mutableStateOf(mympUiState())
@@ -64,6 +67,19 @@ class mympViewModel (
         viewModelScope.launch {
             repository.getAllPlaylists().collect { playlists ->
                 uiState = uiState.copy(playlists = playlists)
+            }
+        }
+
+        //collectors per aggiornare player bar
+        viewModelScope.launch {
+            currentSongState.collect { song ->
+                uiState = uiState.copy(currentSong = song)
+            }
+        }
+
+        viewModelScope.launch {
+            isPlayingState.collect { playing ->
+                uiState = uiState.copy(isPlaying = playing)
             }
         }
 
@@ -304,11 +320,13 @@ class mympViewModel (
 
     class Factory(
         private val repository: mympRepository,
-        private val workManager: WorkManager
+        private val workManager: WorkManager,
+        private val currentSongState: MutableStateFlow<Song?>,
+        private val isPlayingState: MutableStateFlow<Boolean>
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return mympViewModel(repository, workManager) as T
+            return mympViewModel(repository, workManager, currentSongState, isPlayingState) as T
         }
     }
 
