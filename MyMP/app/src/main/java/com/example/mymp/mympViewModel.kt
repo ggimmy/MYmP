@@ -30,7 +30,8 @@ class mympViewModel (
     private val repository: mympRepository,
     private val workManager: WorkManager,
     private val currentSongState: MutableStateFlow<Song?>,
-    private val isPlayingState: MutableStateFlow<Boolean>
+    private val isPlayingState: MutableStateFlow<Boolean>,
+    private val playbackProgressState: MutableStateFlow<Float>
 ) : ViewModel() {
 
     var uiState by mutableStateOf(mympUiState())
@@ -67,6 +68,12 @@ class mympViewModel (
         viewModelScope.launch {
             repository.getAllPlaylists().collect { playlists ->
                 uiState = uiState.copy(playlists = playlists)
+            }
+        }
+
+        viewModelScope.launch {
+            playbackProgressState.collect { progress ->
+                uiState = uiState.copy(playbackProgress = progress)
             }
         }
 
@@ -133,17 +140,6 @@ class mympViewModel (
             else "http://$it"
         }.trimEnd('/') + "/"
 
-        /*
-        viewModelScope.launch {
-            try {
-                repository.refreshSongs(server.id, baseUrl)
-                uiState = uiState.copy(isConnected = true)
-            } catch (e: Exception) {
-                Log.e("ViewModel", "Refresh failed for server ${server.id}: ${e.message}", e)
-                uiState = uiState.copy(isConnected = false)
-            }
-        }*/
-
         val syncRequest = OneTimeWorkRequestBuilder<SyncSongWorker>()
             .addTag(SYNC_TAG)
             .setInputData(workDataOf(
@@ -171,7 +167,8 @@ class mympViewModel (
             putExtra(MusicService.EXTRA_FILE_PATH, song.filePath)
             putExtra(MusicService.EXTRA_TITLE, song.title)
             putExtra(MusicService.EXTRA_ARTIST, song.artist)
-            putExtra(MusicService.EXTRA_PLAYLIST, Json.encodeToString(uiState.songs))
+            //putExtra(MusicService.EXTRA_PLAYLIST, Json.encodeToString(uiState.songs))
+            putExtra(MusicService.EXTRA_PLAYLIST, Json.encodeToString(displayedSongs))
         }
 
         context.startForegroundService(intent)
@@ -318,15 +315,24 @@ class mympViewModel (
         uiState = uiState.copy(sortOrder = order)
     }
 
+    fun seekTo(context: Context, progress: Float) {
+        val intent = Intent(context, MusicService::class.java).apply {
+            action = MusicService.ACTION_SEEK
+            putExtra(MusicService.EXTRA_SEEK_POSITION, progress)
+        }
+        context.startService(intent)
+    }
+
     class Factory(
         private val repository: mympRepository,
         private val workManager: WorkManager,
         private val currentSongState: MutableStateFlow<Song?>,
-        private val isPlayingState: MutableStateFlow<Boolean>
+        private val isPlayingState: MutableStateFlow<Boolean>,
+        private val playbackProgressState: MutableStateFlow<Float>
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return mympViewModel(repository, workManager, currentSongState, isPlayingState) as T
+            return mympViewModel(repository, workManager, currentSongState, isPlayingState, playbackProgressState) as T
         }
     }
 

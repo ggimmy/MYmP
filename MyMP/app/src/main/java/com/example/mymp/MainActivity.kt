@@ -24,14 +24,6 @@ class MainActivity : ComponentActivity() {
 
         val db = (application as MympApplication).database
 
-        /*
-        val json = Json { ignoreUnknownKeys = true }
-        val api = Retrofit.Builder()
-            .baseUrl("http://placeholder/")
-            .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
-            .build()
-            .create(mympApiService::class.java)*/
-
         val repository = mympRepository(db.mympDao(), db.ServerDao(), db.playlistDao())
 
         val app = application as MympApplication
@@ -39,7 +31,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             MyMPTheme {
                 val vm: mympViewModel = viewModel(
-                    factory = mympViewModel.Factory(repository, WorkManager.getInstance(applicationContext), app.currentSongState, app.isPlayingState)
+                    factory = mympViewModel.Factory(repository, WorkManager.getInstance(applicationContext),
+                        app.currentSongState, app.isPlayingState, app.playbackProgressState)
                 )
                 MyMPNavHost(vm)
             }

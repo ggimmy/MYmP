@@ -31,9 +31,12 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -89,7 +92,7 @@ fun mympMainScreen(
                 onValueChange = { viewModel.onSearchQueryChange(it) },
                 placeholder = {
                     Text(
-                        "Cerca canzone o artista...",
+                        "Cerca canzone ...",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 14.sp
                     )
@@ -329,9 +332,11 @@ fun mympMainScreen(
         MiniPlayerBar(
             currentSong = uiState.currentSong,
             isPlaying = uiState.isPlaying,
+            progress = uiState.playbackProgress,
             onPauseResume = { viewModel.pauseResume(context) },
             onSkip = { viewModel.skipSong(context) },
-            onStop = { viewModel.stopSong(context) }
+            onStop = { viewModel.stopSong(context) },
+            onSeek = {progress -> viewModel.seekTo(context, progress)}
         )
     }
 
@@ -353,66 +358,83 @@ fun mympMainScreen(
 }
 
 @Composable
-private fun MiniPlayerBar(
+fun MiniPlayerBar(
     currentSong: Song?,
     isPlaying: Boolean,
+    progress: Float,
     onPauseResume: () -> Unit,
     onSkip: () -> Unit,
-    onStop: () -> Unit
+    onStop: () -> Unit,
+    onSeek: (Float) -> Unit,
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         tonalElevation = 3.dp
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-
-            Box(
-                modifier = Modifier.size(40.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.MusicNote,
-                    contentDescription = null
-                )
-            }
-
-            Column(
+        Column {
+            Row(
                 modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 8.dp)
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = currentSong?.title ?: "Nessun brano in riproduzione",
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = currentSong?.artist ?: "",
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    color = Color.Gray
-                )
+                Box(
+                    modifier = Modifier.size(40.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.MusicNote,
+                        contentDescription = null
+                    )
+                }
+
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 8.dp)
+                ) {
+                    Text(
+                        text = currentSong?.title ?: "Nessun brano in riproduzione",
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = currentSong?.artist ?: "",
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                IconButton(onClick = onPauseResume, enabled = currentSong != null) {
+                    Icon(
+                        imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        contentDescription = if (isPlaying) "Pausa" else "Play"
+                    )
+                }
+
+                IconButton(onClick = onSkip, enabled = currentSong != null) {
+                    Icon(Icons.Default.SkipNext, contentDescription = "Successivo")
+                }
+
+                IconButton(onClick = onStop, enabled = currentSong != null) {
+                    Icon(Icons.Default.Stop, contentDescription = "Stop")
+                }
             }
 
-            IconButton(onClick = onPauseResume, enabled = currentSong != null) {
-                Icon(
-                    imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                    contentDescription = if (isPlaying) "Pausa" else "Play"
+            Slider(
+                value = progress,
+                onValueChange = { onSeek(it) },
+                enabled = currentSong != null,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp),
+                colors = SliderDefaults.colors(
+                    thumbColor = MaterialTheme.colorScheme.primary,
+                    activeTrackColor = MaterialTheme.colorScheme.primary,
+                    inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
                 )
-            }
-
-            IconButton(onClick = onSkip, enabled = currentSong != null) {
-                Icon(Icons.Default.SkipNext, contentDescription = "Successivo")
-            }
-
-            IconButton(onClick = onStop, enabled = currentSong != null) {
-                Icon(Icons.Default.Stop, contentDescription = "Stop")
-            }
+            )
         }
     }
 }

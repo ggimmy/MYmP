@@ -13,5 +13,6 @@ data class mympUiState(
     val currentPlaylistSongs: List<Song> = emptyList(),
     val activePlaylist: PlaylistEntity? = null,  // null = vista server, non-null = vista playlist
     var searchQuery: String = "",
-    var sortOrder: SortOrder = SortOrder.TITLE_ASC //title ascending di default
+    var sortOrder: SortOrder = SortOrder.TITLE_ASC, //title ascending di default
+    val playbackProgress: Float = 0f
 )

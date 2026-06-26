@@ -14,8 +14,12 @@ import android.util.Log
 import androidx.core.app.ServiceCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 
 class MusicService (
@@ -28,6 +32,7 @@ class MusicService (
     private var currentArtist: String = "Sconosciuto"
     private var playlist: List<Song> = emptyList()
     private var currentIndex: Int = 0
+    private var progressJob: Job? = null
 
     private val app get() = application as MympApplication
 
@@ -66,8 +71,10 @@ class MusicService (
             ACTION_PAUSE_RESUME -> {
                 if (mediaPlayer?.isPlaying == true) {
                     mediaPlayer?.pause()
+                    stopProgressPolling()
                 } else {
                     mediaPlayer?.start()
+                    startProgressPolling()
                 }
                 updateSharedState()
                 updateNotification()
@@ -77,7 +84,18 @@ class MusicService (
                 skipToNext()
             }
 
+            ACTION_SEEK -> {
+                val progress = intent.getFloatExtra(EXTRA_SEEK_POSITION, 0f)
+                val duration = mediaPlayer?.duration ?: 0
+                if (duration > 0) {
+                    val position = (progress * duration).toInt()
+                    mediaPlayer?.seekTo(position)
+                    app.playbackProgressState.value = progress
+                }
+            }
+
             ACTION_STOP -> {
+                stopProgressPolling()
                 mediaPlayer?.stop()
                 app.currentSongState.value = null
                 app.isPlayingState.value = false
@@ -91,6 +109,9 @@ class MusicService (
     }
 
     private fun playSong(filePath: String) {
+        stopProgressPolling()
+        app.playbackProgressState.value = 0f
+
         mediaPlayer?.release()
         mediaPlayer = MediaPlayer().apply {
             setDataSource(filePath)
@@ -98,7 +119,8 @@ class MusicService (
             setOnPreparedListener {
                 start()
                 updateNotification()
-               // startForegroundWithNotification()
+                updateSharedState()
+                startProgressPolling()
             }
             setOnCompletionListener {
                 skipToNext()
@@ -117,6 +139,28 @@ class MusicService (
         currentArtist = next.artist
         updateSharedState()
         playSong(next.filePath)
+    }
+
+    private fun startProgressPolling() {
+        progressJob?.cancel()
+        progressJob = scope.launch {
+            while (isActive) {
+                val player = mediaPlayer
+                if (player != null && player.isPlaying) {
+                    val duration = player.duration
+                    val position = player.currentPosition
+                    if (duration > 0) {
+                        app.playbackProgressState.value = position.toFloat() / duration.toFloat()
+                    }
+                }
+                delay(1000L)
+            }
+        }
+    }
+
+    private fun stopProgressPolling() {
+        progressJob?.cancel()
+        progressJob = null
     }
 
     private fun updateSharedState() {
@@ -218,6 +262,7 @@ class MusicService (
     }
 
     override fun onDestroy() {
+        stopProgressPolling()
         mediaPlayer?.release()
         scope.cancel()
         super.onDestroy()
@@ -236,6 +281,8 @@ class MusicService (
         const val EXTRA_TITLE = "title"
         const val EXTRA_ARTIST = "artist"
         const val EXTRA_PLAYLIST = "playlist"
+        const val ACTION_SEEK = "ACTION_SEEK"
+        const val EXTRA_SEEK_POSITION = "seekPosition"
 
     }
 }
