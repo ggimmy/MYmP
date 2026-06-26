@@ -7,9 +7,9 @@ import androidx.room.RoomDatabase
     entities = [SongEntity::class, ServerEntity::class, PlaylistEntity::class, PlaylistSongCrossRef::class],
     version = 4
 )
-abstract class mympDatabase : RoomDatabase(){
-    abstract fun mympDao(): mympDao
-    abstract fun ServerDao(): ServerDao
+abstract class MympDatabase : RoomDatabase(){
+    abstract fun mympDao(): MympDao
+    abstract fun serverDao(): ServerDao
 
     abstract fun playlistDao(): PlaylistDao
 }

@@ -8,7 +8,7 @@ import androidx.room.Query
 import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 @Dao
-interface mympDao {
+interface MympDao {
 
     @Query("SELECT * FROM songs WHERE serverId = :serverId ORDER BY title ASC") //query per singolo server
     fun getAllForServer(serverId: Int): Flow<List<SongEntity>>

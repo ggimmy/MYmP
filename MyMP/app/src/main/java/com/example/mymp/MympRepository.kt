@@ -7,8 +7,8 @@ import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import retrofit2.Retrofit
 
-class mympRepository(
-    private val dao: mympDao,
+class MympRepository(
+    private val dao: MympDao,
     private val serverDao: ServerDao,
     private val playlistDao: PlaylistDao
 ) {
@@ -48,7 +48,7 @@ class mympRepository(
             .baseUrl(baseUrl)
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()
-            .create(mympApiService::class.java)
+            .create(MympApiService::class.java)
 
         val songsRemote = api.getSongs()
 

@@ -13,7 +13,7 @@ class SyncSongWorker (
     override suspend fun doWork(): Result {
 
         val db = (applicationContext as MympApplication).database
-        val repository = mympRepository(db.mympDao(), db.ServerDao(), db.playlistDao())
+        val repository = MympRepository(db.mympDao(), db.serverDao(), db.playlistDao())
 
         val baseUrl = inputData.getString(KEY_IP) ?: return Result.failure()
         val serverId = inputData.getInt(KEY_SERVER_ID, -1)

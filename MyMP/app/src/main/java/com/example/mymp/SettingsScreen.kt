@@ -32,7 +32,7 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun SettingsScreen(
-    viewModel: mympViewModel,
+    viewModel: MympViewModel,
     onBack: () -> Unit
 ) {
     val uiState = viewModel.uiState

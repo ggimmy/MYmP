@@ -1,6 +1,6 @@
 package com.example.mymp
 
-data class mympUiState(
+data class MympUiState(
     val songs: List<Song> = emptyList(),
     val servers: List<ServerEntity> = emptyList(),
     val activeServer: ServerEntity? = null,

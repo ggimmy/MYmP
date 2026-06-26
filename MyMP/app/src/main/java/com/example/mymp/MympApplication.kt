@@ -9,7 +9,7 @@ class MympApplication : Application() {
     val database by lazy {
         Room.databaseBuilder(
             applicationContext,
-            mympDatabase::class.java,
+            MympDatabase::class.java,
             "mymp-database"
         ).fallbackToDestructiveMigration(true).build()
     }

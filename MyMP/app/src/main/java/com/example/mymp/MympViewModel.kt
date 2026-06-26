@@ -14,7 +14,6 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
-import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -23,25 +22,23 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
-import okhttp3.MediaType.Companion.toMediaType
-import retrofit2.Retrofit
 
-class mympViewModel (
-    private val repository: mympRepository,
+class MympViewModel (
+    private val repository: MympRepository,
     private val workManager: WorkManager,
     private val currentSongState: MutableStateFlow<Song?>,
     private val isPlayingState: MutableStateFlow<Boolean>,
     private val playbackProgressState: MutableStateFlow<Float>
 ) : ViewModel() {
 
-    var uiState by mutableStateOf(mympUiState())
+    var uiState by mutableStateOf(MympUiState())
         private set
 
     companion object {
         const val SYNC_TAG = "sync_songs"
     }
 
-    val SyncState: StateFlow<String> = workManager
+    val syncState: StateFlow<String> = workManager
         .getWorkInfosByTagFlow(SYNC_TAG)
         .map { info -> info.maxByOrNull{it.generation}?.state?.name ?: "IDLE" }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), "IDLE")
@@ -56,7 +53,7 @@ class mympViewModel (
         }
 
         viewModelScope.launch {
-            SyncState.collect { state ->
+            syncState.collect { state ->
                 uiState = uiState.copy(isConnected = state == "SUCCEEDED")
             }
         }
@@ -324,7 +321,7 @@ class mympViewModel (
     }
 
     class Factory(
-        private val repository: mympRepository,
+        private val repository: MympRepository,
         private val workManager: WorkManager,
         private val currentSongState: MutableStateFlow<Song?>,
         private val isPlayingState: MutableStateFlow<Boolean>,
@@ -332,7 +329,7 @@ class mympViewModel (
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return mympViewModel(repository, workManager, currentSongState, isPlayingState, playbackProgressState) as T
+            return MympViewModel(repository, workManager, currentSongState, isPlayingState, playbackProgressState) as T
         }
     }
 

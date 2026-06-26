@@ -31,7 +31,6 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -48,7 +47,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -58,11 +56,11 @@ import androidx.compose.ui.unit.sp
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun mympMainScreen(
-    viewModel: mympViewModel,
+    viewModel: MympViewModel,
     onSettingsClick: () -> Unit
 ) {
     val uiState = viewModel.uiState
-    val state by viewModel.SyncState.collectAsState()
+    val state by viewModel.syncState.collectAsState()
     val context = LocalContext.current
 
     var serverDropdownExpanded by remember { mutableStateOf(false) }
