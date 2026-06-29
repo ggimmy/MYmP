@@ -3,6 +3,10 @@ package com.example.mymp
 import androidx.room.Database
 import androidx.room.RoomDatabase
 
+
+/**
+ * Istanza database Room con le 4 tabelle
+ */
 @Database(
     entities = [SongEntity::class, ServerEntity::class, PlaylistEntity::class, PlaylistSongCrossRef::class],
     version = 4

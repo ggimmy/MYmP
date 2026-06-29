@@ -3,12 +3,11 @@ package com.example.mymp
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
-/*
+/**
 *
-* Entità per playlists.
+* Entità room per playlist persistenti.
 *
-* */
-
+*/
 @Entity(tableName = "playlist")
 data class PlaylistEntity(
     @PrimaryKey(autoGenerate = true)

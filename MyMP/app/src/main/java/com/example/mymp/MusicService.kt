@@ -22,18 +22,42 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 
+/**
+ * Foreground Service responsabile della riproduzione audio in background.
+ *
+ * Gestisce il ciclo di vita del [MediaPlayer], la playlist corrente,
+ * il progresso di riproduzione e la notifica di sistema con i controlli
+ * play/pausa, skip e stop.
+ *
+ * Comunica lo stato corrente (brano attivo, isPlaying, progresso) al
+ * [MympViewModel] tramite i [kotlinx.coroutines.flow.MutableStateFlow]
+ * condivisi in [MympApplication], evitando accoppiamento diretto
+ * tra Service e ViewModel.
+ *
+ * Viene avviato tramite [Context.startForegroundService] dal ViewModel,
+ * che passa i parametri necessari (filePath, titolo, artista, playlist)
+ * come extra dell'[Intent].
+ */
 class MusicService (
 
 ): Service() {
 
+    //scope coroutine del service, cancellato in onDestroy
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var mediaPlayer: MediaPlayer? = null
     private var currentTitle: String = "Sconosciuto"
     private var currentArtist: String = "Sconosciuto"
+
+    //lista dei brani in coda deserializzato dal json passato nell'intent
     private var playlist: List<Song> = emptyList()
+
+    //indice del brano in playlist, aggiornato con skip
     private var currentIndex: Int = 0
+
+    //job per polling del progresso
     private var progressJob: Job? = null
 
+    //riferimento all'application per accedere agli stateFlow condivisi
     private val app get() = application as MympApplication
 
     override fun onCreate() {
@@ -42,7 +66,13 @@ class MusicService (
         createNotificationChannel()
     }
 
-
+    /**
+     * Punto di ingresso del Service. Riceve i comandi tramite Intent
+     * e li smista al comportamento corretto.
+     *
+     * Restituisce [START_STICKY] per garantire che il sistema
+     * riavvii il Service se viene terminato mentre è in foreground.
+     */
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
 
         when (intent?.action) {
@@ -112,11 +142,12 @@ class MusicService (
         stopProgressPolling()
         app.playbackProgressState.value = 0f
 
+        //rilasciamo il player visto che questa funzione viene chiamata ricorsivamente
         mediaPlayer?.release()
         mediaPlayer = MediaPlayer().apply {
             setDataSource(filePath)
-            prepareAsync()
-            setOnPreparedListener {
+            prepareAsync() //funzione del media player per svolgere in modo asincorno la riproduzione
+            setOnPreparedListener { //preparedListener per comunicare con il thread lanciato da prepareAsync
                 start()
                 updateNotification()
                 updateSharedState()
@@ -150,6 +181,9 @@ class MusicService (
                     val duration = player.duration
                     val position = player.currentPosition
                     if (duration > 0) {
+                        /*operazione aritmetica per determinare il progresso della canzone tramite i
+                        dati recuperati dal player
+                        */
                         app.playbackProgressState.value = position.toFloat() / duration.toFloat()
                     }
                 }
@@ -172,7 +206,6 @@ class MusicService (
         Log.d("MusicService", "startForegroundWithNotification chiamata")
         Log.d("MusicService", "Channel ID: $CHANNEL_ID")
         Log.d("MusicService", "Notification: ${buildNotification()}")
-        //createNotificationChannel()
         ServiceCompat.startForeground(
             this,
             PLAYBACK_NOTIFICATION_ID,
@@ -187,6 +220,10 @@ class MusicService (
         manager.notify(PLAYBACK_NOTIFICATION_ID, buildNotification())
     }
 
+    /**
+     * Crea il canale di notifica richiesto da Android 8.0 (Oreo) e superiori.
+     * Senza canale, la notifica non verrebbe mostrata su API 26+.
+     */
     private fun createNotificationChannel() {
 
         if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -201,8 +238,6 @@ class MusicService (
                 name,
                 importance
             ).apply {description = descriptionText}
-            /*val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-            manager.createNotificationChannel(channel)*/
             val notificationManager = getSystemService(NotificationManager::class.java)
             notificationManager?.createNotificationChannel(channel)
 
@@ -264,7 +299,7 @@ class MusicService (
     override fun onDestroy() {
         stopProgressPolling()
         mediaPlayer?.release()
-        scope.cancel()
+        scope.cancel() //cancella tutte le coroutines del server
         super.onDestroy()
     }
 

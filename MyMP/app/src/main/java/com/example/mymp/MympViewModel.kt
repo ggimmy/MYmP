@@ -23,28 +23,51 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 
+/**
+ * ViewModel principale dell'app, responsabile della logica di presentazione.
+ *
+ * Espone [uiState] come stato osservabile dalla UI e gestisce:
+ * - la selezione e connessione ai server
+ * - la sincronizzazione dei brani tramite [SyncSongWorker]
+ * - la riproduzione audio tramite [MusicService]
+ * - la gestione delle playlist
+ * - la ricerca e il sorting dei brani
+ *
+ * Riceve i [MutableStateFlow] condivisi da [MympApplication] per osservare
+ * lo stato del [MusicService] (brano corrente, isPlaying, progresso)
+ * senza accoppiamento diretto tra ViewModel e Service.
+ *
+ * @property repository Unica fonte di verità per i dati locali e remoti
+ * @property workManager Scheduler per la sincronizzazione asincrona dei brani
+ * @property currentSongState Flow condiviso con [MusicService]: brano corrente
+ * @property isPlayingState Flow condiviso con [MusicService]: stato play/pausa
+ * @property playbackProgressState Flow condiviso con [MusicService]: progresso (0f-1f)
+ */
 class MympViewModel (
     private val repository: MympRepository,
     private val workManager: WorkManager,
-    private val currentSongState: MutableStateFlow<Song?>,
+    private val currentSongState: MutableStateFlow<Song?>, //brano corrente
     private val isPlayingState: MutableStateFlow<Boolean>,
     private val playbackProgressState: MutableStateFlow<Float>
 ) : ViewModel() {
 
     var uiState by mutableStateOf(MympUiState())
-        private set
+        private set //la UI può solo leggere!
 
     companion object {
-        const val SYNC_TAG = "sync_songs"
+        const val SYNC_TAG = "sync_songs" //tag condiviso dai worker per osservare lo stato
     }
 
+    /**
+     * Stato della sincronizzazione, osserva il worker più recente
+     */
     val syncState: StateFlow<String> = workManager
         .getWorkInfosByTagFlow(SYNC_TAG)
         .map { info -> info.maxByOrNull{it.generation}?.state?.name ?: "IDLE" }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(), "IDLE")
 
     init {
-        // Inizializza i 3 slot server se non esistono ancora
+        // Osserva i 3 server dal DB
         viewModelScope.launch {
             repository.getAllServers().collect { servers ->
                 Log.d("DEBUG_SERVERS", servers.joinToString { "id=${it.id} name=${it.serverName} ip=${it.ipAddress}" })
@@ -52,22 +75,26 @@ class MympViewModel (
             }
         }
 
+        //collect
         viewModelScope.launch {
             syncState.collect { state ->
                 uiState = uiState.copy(isConnected = state == "SUCCEEDED")
             }
         }
 
+        //inizializza gli slot per i server
         viewModelScope.launch {
             ensureDefaultServers()
         }
 
+        //Osserva le playlist
         viewModelScope.launch {
             repository.getAllPlaylists().collect { playlists ->
                 uiState = uiState.copy(playlists = playlists)
             }
         }
 
+        //Osserva lo StateFlow condiviso con MusicPlayer per progresso brano
         viewModelScope.launch {
             playbackProgressState.collect { progress ->
                 uiState = uiState.copy(playbackProgress = progress)
@@ -89,18 +116,31 @@ class MympViewModel (
 
     }
 
+    //crea 3 slot server con valori di default
     private suspend fun ensureDefaultServers() {
         for (i in 1..3) {
             repository.upsertServerIfAbsent(i, "Server $i")
         }
     }
 
-    fun onIpAddressChange(ip: String) {
-        uiState = uiState.copy(ipAddress = ip)
-    }
+    /*fun onIpAddressChange(ip: String) {
+        uiState = uiState.copy(ipAddress = ip) //Funzione deprecata per aggiornamento IP
+    }*/
 
+    /**
+     * Job del collector delle canzoni del server attivo. Ricreato e distrutto a ogni cambio server
+     * (evita race condition su [MympUiState.songs])
+     */
     private var songsCollectionJob: Job? = null
 
+    /**
+     * Seleziona un server come attivo, aggiorna [uiState] e avvia
+     * la sincronizzazione se l'IP è configurato.
+     *
+     * Cancella il collector precedente di [getAllSongs] prima di
+     * lanciarne uno nuovo, evitando che i brani del server precedente
+     * sovrascrivano quelli del nuovo server per via del timing delle coroutine.
+     */
     fun selectServer(server: ServerEntity) {
         uiState = uiState.copy(activeServer = server, ipAddress = server.ipAddress)
 
@@ -117,7 +157,8 @@ class MympViewModel (
     }
     
 
-    fun onConnectClick() {
+    //DEPRECATA
+    /*fun onConnectClick() {
         val active = uiState.activeServer ?: return
         if (uiState.ipAddress.isBlank()) return
 
@@ -129,8 +170,15 @@ class MympViewModel (
 
         uiState = uiState.copy(activeServer = updated)
         connectToServer(updated)
-    }
+    }*/
 
+    /**
+     * Normalizza l'URL del server e schedula un [SyncSongWorker] tramite WorkManager.
+     *
+     * La normalizzazione aggiunge "http://" se assente e garantisce
+     * il trailing slash richiesto da Retrofit come base URL.
+     * Il Worker riceve [baseUrl] e [server.id] come input data.
+     */
     private fun connectToServer(server: ServerEntity) {
         val baseUrl = server.ipAddress.let {
             if (it.startsWith("http://") || it.startsWith("https://")) it
@@ -153,6 +201,15 @@ class MympViewModel (
         workManager.enqueue(syncRequest)
     }
 
+
+    /**
+     * Avvia la riproduzione di un brano inviando [MusicService.ACTION_PLAY]
+     * al [MusicService] tramite Intent.
+     *
+     * Passa [displayedSongs] come playlist serializzata in JSON —
+     * non [MympUiState.songs] — per garantire che lo skip rispetti
+     * la vista attualmente visualizzata (server o playlist).
+     */
     fun playSong(context: Context, song: Song){
         uiState = uiState.copy(
             currentSong = song,
@@ -164,7 +221,6 @@ class MympViewModel (
             putExtra(MusicService.EXTRA_FILE_PATH, song.filePath)
             putExtra(MusicService.EXTRA_TITLE, song.title)
             putExtra(MusicService.EXTRA_ARTIST, song.artist)
-            //putExtra(MusicService.EXTRA_PLAYLIST, Json.encodeToString(uiState.songs))
             putExtra(MusicService.EXTRA_PLAYLIST, Json.encodeToString(displayedSongs))
         }
 
@@ -176,7 +232,8 @@ class MympViewModel (
         val intent = Intent(context, MusicService::class.java).apply{
             action = MusicService.ACTION_PAUSE_RESUME
         }
-        context.startService(intent)
+        context.startService(intent) //non fa partire un nuovo service, ma chiama onStartCommand()
+                                          //passandogli il nuovo intent
     }
 
     fun skipSong(context: Context) {
@@ -201,6 +258,7 @@ class MympViewModel (
 
     //funzioni server
 
+    //salva le modifiche du un server tramite upsert
     fun updateServer(server: ServerEntity) {
         viewModelScope.launch {
             repository.upsertServer(server)
@@ -233,6 +291,7 @@ class MympViewModel (
         }
     }
 
+    //job del collcetor dei brani di una playlist attiva
     private var playlistSongsJob: Job? = null
 
     fun loadPlaylistSongs(playlistId: Int) {
@@ -259,32 +318,18 @@ class MympViewModel (
 
     //Funzione query e sorting
 
-    fun searchSong(): MutableList<Song> {
-        val queryResult = mutableListOf<Song>()
-
-        uiState.activePlaylist?.let {
-            uiState.currentPlaylistSongs.forEach { song ->
-                if (song.title.contains(uiState.searchQuery)) {
-                    queryResult.add(song)
-                }
-            }
-        }
-
-        for (song in uiState.songs) {
-
-            if(song.title.contains(uiState.searchQuery)){
-                queryResult.add(song)
-            }
-
-        }
-
-        return queryResult
-    }
-
-
+    /**
+     * Proprietà calcolata che restituisce la lista di brani da visualizzare,
+     * applicando filtro e ordinamento allo stato corrente.
+     *
+     * La sorgente è [MympUiState.currentPlaylistSongs] se è attiva una playlist,
+     * altrimenti [MympUiState.songs] del server attivo.
+     * Ricalcolata automaticamente ad ogni accesso, riflettendo sempre
+     * [MympUiState.searchQuery] e [MympUiState.sortOrder] aggiornati.
+     */
     val displayedSongs: List<Song>
         get() {
-            val base = if (uiState.activePlaylist != null)
+            val base = if (uiState.activePlaylist != null) //variabile base da cui filtrare/sorting
                 uiState.currentPlaylistSongs
             else
                 uiState.songs
@@ -312,6 +357,7 @@ class MympViewModel (
         uiState = uiState.copy(sortOrder = order)
     }
 
+    //seek con slider
     fun seekTo(context: Context, progress: Float) {
         val intent = Intent(context, MusicService::class.java).apply {
             action = MusicService.ACTION_SEEK
@@ -320,6 +366,11 @@ class MympViewModel (
         context.startService(intent)
     }
 
+    /**
+     * Factory per la creazione del ViewModel con parametri custom.
+     * Necessaria perché [MympViewModel] non ha un costruttore vuoto —
+     * ViewModelProvider non saprebbe come istanziarlo senza questa Factory.
+     */
     class Factory(
         private val repository: MympRepository,
         private val workManager: WorkManager,

@@ -5,12 +5,17 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
-/*
-*
-* Entità intermedia per relazione molti a molti con PK composta
-*
-* */
-
+/**
+ * Entità relazionale per associazione molti a molti tra [PlaylistEntity] e [SongEntity] con PK composta.
+ *
+ * La primary key di questa tabella è composta dalla tripla (playlistId, serverId, remoteId), le
+ * quali a loro volta sono foreign keys.
+ *
+ * Questo per garantire l'unicità e la consistenza dei brani in playlist trasversali.
+ * (Le foreign key sono marcate con ON DELETE CASCADE quindi quando la loro ref principale viene
+ * rimossa, si cancella anche nelle altre tabelle)
+ *
+ */
 @Entity(
     tableName = "playlist_song_cross_ref",
     primaryKeys = ["playlistId", "serverId", "remoteId"],
@@ -31,8 +36,8 @@ import androidx.room.PrimaryKey
     indices = [Index(value = ["serverId", "remoteId"])]
 )
 data class PlaylistSongCrossRef(
-    val playlistId: Int,
-    val serverId: Int,
-    val remoteId: Int,
-    val position: Int = 0
+    val playlistId: Int, //collegamento a PlaylistEntity
+    val serverId: Int,   //collegamento a SongEntity
+    val remoteId: Int,   //collegamento a SongEntity
+    val position: Int = 0 //inutilizzato
 )

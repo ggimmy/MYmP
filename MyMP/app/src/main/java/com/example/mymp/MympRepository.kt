@@ -7,6 +7,9 @@ import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import retrofit2.Retrofit
 
+/**
+ * Repository che fungerà da nostro punto di accesso ai Dati e unica source of truth
+ */
 class MympRepository(
     private val dao: MympDao,
     private val serverDao: ServerDao,
@@ -15,6 +18,10 @@ class MympRepository(
 
     /* FUNZIONI CANZONI */
 
+    /**
+     * Funzione utilizzata per osservare le canzoni in un server, utilizzata quando si seleziona un
+     * server.
+     */
     fun getAllSongs(serverId: Int): Flow<List<Song>> =
         dao.getAllForServer(serverId).map { entities ->
             entities.map { entity ->
@@ -29,6 +36,7 @@ class MympRepository(
             }
         }
 
+    //Non utilizzata, l'insert manuale da parte dell'utente non è previsto.
     suspend fun addSong(song: Song, serverId: Int) {
         val entity = SongEntity(
             id = 0,
@@ -42,6 +50,13 @@ class MympRepository(
         dao.insert(entity)
     }
 
+    /**
+     * Refresh che parte quando viene chiamato il Worker per la sincronizzazione del server
+     * Prende le canzoni tramite retrofit e le memorizza in una variabile, songsRemote che verrà
+     * utilizzata per il confronto, l'upsert e il delete di brani non più presenti.
+     *
+     * Prende in input il server da sincronizzare e l'url.
+     */
     suspend fun refreshSongs(serverId: Int, baseUrl: String) {
         val json = Json { ignoreUnknownKeys = true }
         val api = Retrofit.Builder()
@@ -79,6 +94,9 @@ class MympRepository(
 
     /*FUNZIONI SERVER*/
 
+    /**
+     * Funzione per osservare i server
+     */
     fun getAllServers(): Flow<List<ServerEntity>> = serverDao.getAllServers()
 
     suspend fun upsertServer(server: ServerEntity) {
