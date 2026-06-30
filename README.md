@@ -105,6 +105,7 @@ Il permesso `POST_NOTIFICATIONS` viene richiesto a runtime su Android 13+.
 ### Playlist
 - Creazione di playlist personali **trasversali ai server** (i brani possono provenire da server diversi)
 - Aggiunta brani tramite **long press** sulla canzone → dialog con lista playlist esistenti + opzione "Crea nuova"
+- Rimozione brani tramite **long press** sulla canzone → dialog con conferma rimozione brano da playlist
 - Visualizzazione playlist tramite dropdown nella schermata principale
 - Eliminazione playlist con rimozione automatica a cascata dei riferimenti ai brani
 - Se un brano viene rimosso dal server in una re-sync, sparisce automaticamente anche dalle playlist che lo contenevano (CASCADE)

@@ -139,7 +139,9 @@ class MympRepository(
                     title = entity.title,
                     artist = entity.artist,
                     album = entity.album,
-                    filePath = entity.filePath
+                    filePath = entity.filePath,
+                    serverId = entity.serverId,
+                    remoteId = entity.remoteId
                 )
             }
         }

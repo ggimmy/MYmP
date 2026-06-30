@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -67,6 +68,7 @@ fun mympMainScreen(
     var playlistDropdownExpanded by remember { mutableStateOf(false) }
     var sortDropdownExpanded by remember { mutableStateOf(false) }
     var songForPlaylist by remember { mutableStateOf<Song?>(null) }
+    var songToRemoveFromPlaylist by remember {mutableStateOf<Song?>(null)}
 
     val displayedSongs = viewModel.displayedSongs
 
@@ -294,7 +296,13 @@ fun mympMainScreen(
                         )
                         .combinedClickable(
                             onClick = { viewModel.playSong(context, song) },
-                            onLongClick = { songForPlaylist = song }
+                            //onLongClick = { songForPlaylist = song }
+                            onLongClick = { if (uiState.activePlaylist != null) {
+                                            songToRemoveFromPlaylist = song
+                                            } else {
+                                                songForPlaylist = song
+                                            }
+                            }
                         )
                         .padding(horizontal = 8.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -353,6 +361,19 @@ fun mympMainScreen(
             onDismiss = { songForPlaylist = null }
         )
     }
+
+    songToRemoveFromPlaylist?.let { song ->
+        val playlistId = uiState.activePlaylist?.playlistId ?: return@let
+        RemoveFromPlaylistDialog(
+            song = song,
+            onConfirm = {
+                viewModel.removeSongFromPlaylist(playlistId, song.serverId, song.remoteId)
+                songToRemoveFromPlaylist = null
+            },
+            onDismiss = { songToRemoveFromPlaylist = null }
+        )
+    }
+
 }
 
 @Composable
@@ -435,4 +456,23 @@ fun MiniPlayerBar(
             )
         }
     }
+}
+
+@Composable
+fun RemoveFromPlaylistDialog(
+    song: Song,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Rimuovi brano") },
+        text = { Text("Vuoi rimuovere \"${song.title}\" dalla playlist?") },
+        confirmButton = {
+            TextButton(onClick = onConfirm) { Text("Rimuovi") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Annulla") }
+        }
+    )
 }
